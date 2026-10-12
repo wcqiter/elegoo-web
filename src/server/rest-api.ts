@@ -84,6 +84,19 @@ async function ensureCacheDir(): Promise<void> {
   await mkdir(gcodeCacheDir(), { recursive: true });
 }
 
+/**
+ * Build a Content-Disposition value that survives non-ASCII filenames.
+ * Node rejects header values above 0xFF, so we emit an ASCII fallback plus
+ * the RFC 5987 `filename*` form for clients that understand it (ELEG: gcode
+ * files routinely have CJK names — 紅豆, 頭髮用 — which used to make writeHead
+ * throw ERR_INVALID_CHAR and silently turn the 200 into a 404).
+ */
+function contentDisposition(filename: string): string {
+  const ascii = filename.replace(/[^\x20-\x7E]/g, '_').replace(/"/g, "'");
+  const utf8 = encodeURIComponent(filename);
+  return `attachment; filename="${ascii}"; filename*=UTF-8''${utf8}`;
+}
+
 /** Cache a gcode file from a Buffer (e.g. after upload) */
 export async function cacheGcodeBuffer(
   fileName: string,
@@ -139,10 +152,12 @@ async function handleFileDownload(
   isGcode: boolean,
   config: ServiceConfig,
 ): Promise<void> {
-  // Try serving from cache first (gcode files only)
+  // ── Cache lookups (gcode only) ─────────────────────────────────
   if (isGcode) {
     try {
       await ensureCacheDir();
+
+      // 1) Hash-named cache, written by the service itself on download/upload
       const cached = await getCachedGcode(fileName, config);
       if (cached) {
         log.info(`Download proxy: serving ${fileName} from cache`);
@@ -155,11 +170,41 @@ async function handleFileDownload(
         createReadStream(cached).pipe(res);
         return;
       }
+
+      // 2) User cache: files dropped into the mounted gcode-cache dir by hand
+      //    (e.g. C:\Users\…\3D Print → /app/data/gcode-cache). Match by basename
+      //    only, and reject anything that could escape the cache dir.
+      if (baseName && !baseName.includes('..') && !baseName.includes('/') && !baseName.includes('\\')) {
+        const userCachePath = join(gcodeCacheDir(), baseName);
+        if (userCachePath.startsWith(gcodeCacheDir())) {
+          const us = await stat(userCachePath).catch(() => null);
+          if (us && us.size > 0) {
+            log.info(`Download proxy: serving ${fileName} from user cache (${baseName})`);
+            res.writeHead(200, {
+              'Content-Type': 'application/octet-stream',
+              'Content-Disposition': contentDisposition(baseName),
+              'Content-Length': String(us.size),
+            });
+            createReadStream(userCachePath).pipe(res);
+            return;
+          }
+        }
+      }
     } catch {
-      /* cache miss, fall through to printer */
+      /* cache miss, fall through */
     }
   }
 
+  // ── Explicit cache request: never touch the printer ────────────
+  // Returning 404 (not hanging, not proxying) is what lets the frontend
+  // fall back to source=local when the file isn't in the user cache yet.
+  if (source === 'cache') {
+    res.writeHead(404, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'Not in gcode-cache' }));
+    return;
+  }
+
+  // ── Printer proxy (unchanged) ──────────────────────────────────
   const pathMap: Record<string, string> = {
     local: '/download',
     'u-disk': '/download/udisk',
@@ -175,8 +220,6 @@ async function handleFileDownload(
       path: `${dlPath}?X-Token=${encodeURIComponent(config.printerPassword)}&file_name=${encodeURIComponent(fileName)}`,
       method: 'GET',
       timeout: 120_000,
-      // Printer's libhv sends both Content-Length and Transfer-Encoding: chunked,
-      // which is invalid HTTP. Node's strict parser rejects this.
       insecureHTTPParser: true,
     },
     (proxyRes) => {
@@ -186,17 +229,15 @@ async function handleFileDownload(
         proxyRes.resume();
         return;
       }
-      // Keep the socket alive during slow transfers
       proxyRes.socket?.setTimeout(120_000);
       res.writeHead(200, {
         'Content-Type': 'application/octet-stream',
-        'Content-Disposition': `attachment; filename="${baseName}"`,
+        'Content-Disposition': contentDisposition(baseName),
         ...(proxyRes.headers['content-length']
           ? { 'Content-Length': proxyRes.headers['content-length'] }
           : {}),
       });
 
-      // For gcode files, tee the stream to a cache file
       if (isGcode) {
         const cachePath = join(gcodeCacheDir(), gcodeCacheKey(config.printerIp, fileName));
         const cacheStream = createWriteStream(cachePath);
@@ -233,7 +274,6 @@ async function handleFileDownload(
   });
   proxyReq.end();
 }
-
 /**
  * Pre-download a gcode file to cache in the background.
  * Called on print start so the preview can be served from cache
@@ -317,7 +357,10 @@ export async function precacheGcodeAsync(
     return { ok: true, cached: false, size };
   } catch (err) {
     const msg = (err as Error).message;
-    log.warn(`Precache failed for ${fileName}: ${msg}`);
+    const code = (err as NodeJS.ErrnoException).code;
+    if (code !== 'ENOENT') {
+      log.warn(`Cache lookup failed for ${fileName}: ${(err as Error).message}`);
+    }
     return { ok: false, cached: false, size: 0, error: msg };
   }
 }

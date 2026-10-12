@@ -155,7 +155,7 @@ function scheduleRender(): void {
       renderSystemInfo(state);
       renderTimelapse(state);
       renderGcodePreview(state);
-      renderLayerTimeChart(state);
+      //renderLayerTimeChart(state);
       renderPrintHistory(state);
       renderMaintenance(state);
       renderReports();

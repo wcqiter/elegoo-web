@@ -10,7 +10,7 @@ import {
   isOtaInProgressSubStatus,
 } from '../types';
 import { maybeShowPowerLossDialog } from './power-loss-dialog';
-import { $, formatTime, formatClock, fanPct, escapeHtml, applyDarkThumbnailCheck } from './helpers';
+import { $, formatTime, formatClockWithDay, fanPct, escapeHtml, applyDarkThumbnailCheck } from './helpers';
 import { loadUISettings, saveUISettings } from './ui-settings';
 
 let lastThumbnailFile = '';
@@ -324,13 +324,13 @@ export function renderDashboard(state: PrinterState, client: CommandSender): voi
   // Start time and ETA (calculated from elapsed / remaining)
   if ((isPrinting || isPaused) && printDur != null) {
     const startedAt = new Date(Date.now() - printDur * 1000);
-    $('print-started').textContent = `Started: ${formatClock(startedAt)}`;
+    $('print-started').textContent = `Started: ${formatClockWithDay(startedAt)}`;
   } else {
     $('print-started').textContent = '--';
   }
   if ((isPrinting || isPaused) && ps?.remaining_time_sec != null && ps.remaining_time_sec > 0) {
     const eta = new Date(Date.now() + ps.remaining_time_sec * 1000);
-    $('print-eta').textContent = `ETA: ${formatClock(eta)}`;
+    $('print-eta').textContent = `ETA: ${formatClockWithDay(eta)}`;
   } else {
     $('print-eta').textContent = '--';
   }

@@ -29,11 +29,37 @@ export function formatTime(seconds: number): string {
   return `${m}m`;
 }
 
-/** Format a Date as HH:MM local time (e.g. "14:35") */
-export function formatClock(date: Date): string {
-  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+function relativeDayLabel(date: Date, now: Date): string {
+  const startOf = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const diffDays = Math.round((startOf(date) - startOf(now)) / 86_400_000);
+  switch (diffDays) {
+    case 0: return 'Today';
+    case 1: return 'Tomorrow';
+    case -1: return 'Yesterday';
+    default: return '';
+  }
 }
 
+export function formatDateWithDay(date: Date, now = new Date()): string {
+  const rel = relativeDayLabel(date, now);
+  if (rel) return rel;
+  return `${date.getMonth() + 1}/${date.getDate()} ${WEEKDAYS[date.getDay()]}`;
+}
+
+/** 24-hour clock only, e.g. "14:35". */
+export function formatClock(date: Date): string {
+  return date.toLocaleTimeString('en-GB', {
+    hour: '2-digit', minute: '2-digit', hour12: false,
+  });
+}
+
+/** "Today 14:35" or "3/15 Sat 12:29". */
+export function formatClockWithDay(date: Date, now = new Date()): string {
+  return `${formatDateWithDay(date, now)} ${formatClock(date)}`;
+}
 export function fanPct(speed: number): number {
   return Math.round((speed / 255) * 100);
 }

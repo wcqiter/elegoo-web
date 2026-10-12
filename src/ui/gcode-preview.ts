@@ -37,6 +37,17 @@ let lastFilamentColor = '';
 /** Cached color map for re-init */
 let cachedColorMap: Array<{ t: number; color: string }> = [];
 
+/** True while machine_status.status === 2 (printing). Updated on every render. */
+let _isPrinting = false;
+
+/** Called from renderGcodePreview() so loadGcode() can consult a cheap flag. */
+export function updatePrintingFlag(state: PrinterState): void {
+  _isPrinting = state.status?.machine_status?.status === 2;
+}
+
+function isPrinterPrinting(): boolean {
+  return _isPrinting;
+}
 // CC2 Centauri Carbon 2 build volume (mm)
 const BUILD_VOLUME = { x: 256, y: 256, z: 256, smallGrid: false };
 
@@ -146,6 +157,7 @@ function onOrbitChange(): void {
 
 /** Exported for main.ts to call on each render frame */
 export function renderGcodePreview(state: PrinterState): void {
+  updatePrintingFlag(state);
   const s = state.status;
   const ps = s?.print_status;
   const isPrinting = s?.machine_status?.status === 2;
@@ -157,7 +169,7 @@ export function renderGcodePreview(state: PrinterState): void {
     cachedColorMap = state.colorMap;
     lastFilamentColor = state.colorMap.map((c) => `${c.t}:${c.color}`).join(',');
     if (filename !== loadedFile) {
-      setTimeout(() => loadGcode(filename), 3000);
+      setTimeout(() => loadGcode(filename, 'auto'), 3000);
     }
   }
 
@@ -229,8 +241,42 @@ function initPreview(colorMap?: Array<{ t: number; color: string }>): WebGLPrevi
   return p;
 }
 
-/** Load gcode file from the server download proxy */
-export async function loadGcode(filename: string, source = 'local'): Promise<void> {
+/**
+ * Try to fetch a gcode file from a specific source.
+ * Returns the Response on 2xx, null on 4xx (file not in that source),
+ * throws on repeated network errors.
+ */
+async function tryFetchFromSource(
+  filename: string,
+  source: string,
+  statusEl: HTMLElement | null,
+  timeoutMs = 30_000,
+): Promise<Response | null> {
+  const url = `/api/files/download?file=${encodeURIComponent(filename)}&source=${encodeURIComponent(source)}`;
+
+  const attempts = source === 'cache' ? 1 : 3;
+
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    try {
+      const resp = await fetchTimeout(url, undefined, timeoutMs);
+      if (resp.ok) return resp;
+      if (resp.status >= 400 && resp.status < 500) return null;
+    } catch (e) {
+      console.warn(`[gcode] source=${source} attempt=${attempt} failed:`, e);
+      if (attempt < attempts) {
+        if (statusEl) statusEl.textContent = `Retry ${attempt}/${attempts - 1} — ${source}`;
+        await new Promise((r) => setTimeout(r, 1000));
+      }
+    }
+  }
+  return null;
+}
+
+/** Load gcode file — tries local gcode-cache first, then falls back to the printer */
+export async function loadGcode(
+  filename: string,
+  source: 'auto' | 'cache' | 'local' = 'auto',
+): Promise<void> {
   if (loading) return;
 
   const statusEl = $('gcode-preview-status');
@@ -239,51 +285,58 @@ export async function loadGcode(filename: string, source = 'local'): Promise<voi
   try {
     loading = true;
     if (loadBtn) loadBtn.disabled = true;
-    if (statusEl) statusEl.textContent = 'Downloading gcode…';
 
-    const url = `/api/files/download?file=${encodeURIComponent(filename)}&source=${encodeURIComponent(source)}`;
+    // 'auto' resolves to:
+    //   - printing  → cache only (the printer won't serve downloads mid-print,
+    //                 so falling back to local just hangs for 120s)
+    //   - idle      → cache, then local
+    const sources: Array<{ src: string; timeoutMs: number }> =
+      source === 'auto'
+        ? isPrinterPrinting()
+          ? [{ src: 'cache', timeoutMs: 5_000 }]
+          : [
+              { src: 'cache', timeoutMs: 5_000 },
+              { src: 'local', timeoutMs: 120_000 },
+            ]
+        : [{ src: source, timeoutMs: source === 'cache' ? 5_000 : 120_000 }];
+
     let resp: Response | null = null;
-    for (let attempt = 1; attempt <= 3; attempt++) {
-      try {
-        resp = await fetchTimeout(url, undefined, 120_000);
-        if (resp.ok) break;
-        resp = null;
-      } catch (e) {
-        if (attempt < 3) {
-          if (statusEl) statusEl.textContent = `Retry ${attempt}/2 — download failed`;
-          await new Promise((r) => setTimeout(r, 2000));
-        } else {
-          throw e;
-        }
+    let usedSource = '';
+    for (const { src, timeoutMs } of sources) {
+      if (statusEl) statusEl.textContent = `Loading gcode from ${src}…`;
+      resp = await tryFetchFromSource(filename, src, statusEl, timeoutMs);
+      if (resp) {
+        usedSource = src;
+        break;
       }
     }
-    if (!resp || !resp.ok) throw new Error(`Download failed: ${resp?.status ?? 'no response'}`);
+
+    if (!resp) {
+      // No local copy. When printing, we deliberately do NOT hit the printer.
+      const msg = isPrinterPrinting()
+        ? 'Not in local gcode-cache — put the file in the mounted folder to preview it while printing'
+        : `File not found in any source (${sources.map((s) => s.src).join(', ')})`;
+      throw new Error(msg);
+    }
 
     if (statusEl) statusEl.textContent = 'Parsing gcode…';
 
     const gcode = await resp.text();
 
-    // Initialize clean preview with filament colors
     preview = initPreview(cachedColorMap);
     if (!preview) {
       if (statusEl) statusEl.textContent = 'Canvas not found';
       return;
     }
 
-    // Process gcode (v3 is async)
     await preview.processGCode(gcode);
 
-    // Stop the library's built-in 60fps animate loop — it calls WebGL render()
-    // every frame, leaking ~23 MB/s. We render on-demand instead.
     stopAnimateLoop(preview);
-    // Re-render once after stopping the loop (processGCode's last frame may be lost)
     preview.renderer.render(preview.scene, preview.camera);
-    // Render on orbit control interaction (user dragging)
     preview.controls.addEventListener('change', onOrbitChange);
 
     loadedFile = filename;
 
-    // Set layer slider range
     const totalLayers = preview.countLayers;
     const slider = $('gcode-layer-slider') as HTMLInputElement | null;
     if (slider) {
@@ -291,8 +344,10 @@ export async function loadGcode(filename: string, source = 'local'): Promise<voi
       slider.value = String(totalLayers);
     }
 
-    // Show total layers
-    if (statusEl) statusEl.textContent = `${totalLayers} layers · ${shortName(filename)}`;
+    if (statusEl) {
+      const tag = usedSource === 'cache' ? ' · cached' : '';
+      statusEl.textContent = `${totalLayers} layers · ${shortName(filename)}${tag}`;
+    }
   } catch (err) {
     console.error('Gcode preview load error:', err);
     if (statusEl) statusEl.textContent = `Error: ${(err as Error).message}`;

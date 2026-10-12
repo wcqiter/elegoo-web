@@ -3,7 +3,7 @@
  * No own MQTT connection; uses the service's singleton bridge.
  */
 
-import { Bot, InputFile, InputMediaBuilder } from 'grammy';
+import { Bot, InputFile } from 'grammy';
 import type { Context } from 'grammy';
 import type { StateStore, PrintEvent } from './state-store.js';
 import type { MqttBridge } from './mqtt-bridge.js';
@@ -14,6 +14,7 @@ import { isAllowedSender } from './allowlist.js';
 import { classifyOtaTransition, otaPhaseName } from './ota-status.js';
 import type { AIAlert } from './ai-monitor.js';
 import { getLogger } from './logger.js';
+import { formatDateWithDay } from './date-format.js';
 
 const log = getLogger('Telegram');
 
@@ -71,13 +72,14 @@ export function formatEvent(event: PrintEvent): { text: string; urgent: boolean 
         ? `Layer ${event.layer} of ${event.totalLayers}`
         : `Layer ${event.layer}`;
       const now = new Date();
-      const updatedAt = now.toLocaleTimeString('nb-NO', {
+      const updatedAt = now.toLocaleTimeString(undefined, {
         hour: '2-digit',
         minute: '2-digit',
         second: '2-digit',
+        hour12: false
       });
       const eta = new Date(now.getTime() + event.remaining * 1000);
-      const etaStr = eta.toLocaleTimeString('nb-NO', { hour: '2-digit', minute: '2-digit' });
+      const etaStr = `${formatDateWithDay(eta, now)} ` + eta.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false });
       return {
         text: [
           `📊 *Print Progress: ${event.progress}%*`,
@@ -159,7 +161,6 @@ function formatOtaTransition(event: Extract<PrintEvent, { type: 'sub_status_chan
 
 export class TelegramIntegration {
   private bot: Bot;
-  private liveMessageId: number | null = null;
   private eventQueue: Promise<void> = Promise.resolve();
 
   constructor(
@@ -178,12 +179,6 @@ export class TelegramIntegration {
         .catch((err) => {
           log.error(`Unhandled error in event handler: ${(err as Error).message}`);
         });
-    });
-
-    // A different printer (ELEG-95): the live progress message belongs to the old one,
-    // so the new printer's progress must start a message of its own, not edit that one.
-    store.on('printer_switched', () => {
-      this.liveMessageId = null;
     });
   }
 
@@ -266,29 +261,27 @@ export class TelegramIntegration {
         ].includes(event.type);
       const photo = wantPhoto ? await getSnapshot(this.config) : null;
 
-      // Progress: update live message in place
-      if (event.type === 'print_progress') {
-        const edited = await this.updateLiveMessage(text, photo);
-        if (!edited) {
-          this.liveMessageId = await this.sendNew(text, photo, urgent);
-        }
-        return;
-      }
-
-      // Print started: send new live message (skip reconnection-based events)
+      // Print started: send new message (skip reconnection-based events)
       if (event.type === 'print_started') {
         if (event.resumed) {
           log.info('Skipping print_started — reconnected to active print');
           return;
         }
-        this.liveMessageId = await this.sendNew(text, photo, urgent);
+        await this.sendNew(text, photo, urgent);
         return;
       }
 
-      // Print ended: send as NEW message (not edit), then clear live msg
+      // Print progress: always send a NEW message (with notification) instead of
+      // editing a live message in place. Passing `true` as `urgent` ensures the
+      // text branch does not set `disable_notification`.
+      if (event.type === 'print_progress') {
+        await this.sendNew(text, photo, true);
+        return;
+      }
+
+      // Print ended: send as NEW message
       if (event.type === 'print_completed' || event.type === 'print_failed') {
         await this.sendNew(text, photo, urgent);
-        this.liveMessageId = null;
         return;
       }
 
@@ -324,35 +317,6 @@ export class TelegramIntegration {
     });
     log.info(`Sent new text message ${msg.message_id}`);
     return msg.message_id;
-  }
-
-  private async updateLiveMessage(text: string, photo: Buffer | null): Promise<boolean> {
-    if (!this.liveMessageId) return false;
-    const chatId = this.config.telegramChatId;
-    const caption = safeCaption(text);
-    try {
-      if (photo) {
-        const media = InputMediaBuilder.photo(new InputFile(photo, `snapshot_${Date.now()}.jpg`), {
-          caption,
-          parse_mode: 'MarkdownV2',
-        });
-        await this.bot.api.editMessageMedia(chatId, this.liveMessageId, media);
-      } else {
-        await this.bot.api.editMessageCaption(chatId, this.liveMessageId, {
-          caption,
-          parse_mode: 'MarkdownV2',
-        });
-      }
-      log.info(`Updated live message ${this.liveMessageId}`);
-      return true;
-    } catch (err) {
-      const msg = (err as Error).message;
-      if (msg.includes('message is not modified')) return true;
-      log.warn(`Edit failed (msgId=${this.liveMessageId}): ${msg}`);
-      // Message might have been deleted — clear tracking so we send a new one
-      this.liveMessageId = null;
-      return false;
-    }
   }
 
   private _running = false;

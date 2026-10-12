@@ -5,8 +5,6 @@ import type { PrinterState } from '../printer-state';
 import {
   type MqttPhase,
   type VersionStampish,
-  UNKNOWN_VERSION_LABEL,
-  buildVersionLabel,
   mqttBannerHeadline,
   mqttPhaseMessage,
 } from '../types';
@@ -148,7 +146,6 @@ export function renderServiceStatus(): void {
   // unstamped build rather than green, because "unknown" is a real gap: production runs
   // from /opt/elegooweb, and a deploy where the installer never re-ran shows exactly
   // this (ELEG-48).
-  const version = buildVersionLabel(s.build);
 
   // The banner used to fire on `broker_only && attempts >= 3`, which meant it could
   // never fire for the case that most needed it: when the printer never speaks, no SN is
@@ -172,7 +169,6 @@ export function renderServiceStatus(): void {
       <div class="svc-item">${dotHtml(!!s.printerSn)}<span class="svc-label">Printer</span><span class="svc-value">${s.printerSn || 'unknown'}</span></div>
       <div class="svc-item">${dotHtml(true)}<span class="svc-label">WS Clients</span><span class="svc-value">${s.wsClients}</span></div>
       <div class="svc-item">${dotHtml(true)}<span class="svc-label">Uptime</span><span class="svc-value">${formatUptime(s.uptime)}</span></div>
-      <div class="svc-item">${dotHtml(version !== UNKNOWN_VERSION_LABEL)}<span class="svc-label">Version</span><span class="svc-value">${escapeHtml(version)}</span></div>
     </div>
   `;
 }
