@@ -53,6 +53,10 @@ export function gcodeCacheDir(): string {
   return join(dataDir, 'gcode-cache');
 }
 
+export function gcodeUserDir(): string {
+  return join(dataDir, 'gcode');
+}
+
 /**
  * Where `POST /api/debug/capture` writes, and where the capture list and reader look.
  * The same directory `initLogger` writes `service.log` into — deliberately, since both

@@ -33,7 +33,7 @@ import { handlePrintQueueRequest } from './print-queue-routes.js';
 import { generateReportPDF } from './print-report-pdf.js';
 import { getBuildInfo } from './build-info.js';
 import { applyCors, corsHeaders } from './cors.js';
-import { captureLogDir, gcodeCacheDir } from './data-paths.js';
+import { captureLogDir, gcodeCacheDir, gcodeUserDir } from './data-paths.js';
 import { getLogger } from './logger.js';
 import { resolveTimelapseUpstream, type TimelapseUpstream } from './timelapse-proxy.js';
 import {
@@ -175,17 +175,18 @@ async function handleFileDownload(
       //    (e.g. C:\Users\…\3D Print → /app/data/gcode-cache). Match by basename
       //    only, and reject anything that could escape the cache dir.
       if (baseName && !baseName.includes('..') && !baseName.includes('/') && !baseName.includes('\\')) {
-        const userCachePath = join(gcodeCacheDir(), baseName);
-        if (userCachePath.startsWith(gcodeCacheDir())) {
-          const us = await stat(userCachePath).catch(() => null);
+        const userDir = gcodeUserDir();
+        const userPath = join(userDir, baseName);
+        if (userPath.startsWith(userDir)) {
+          const us = await stat(userPath).catch(() => null);
           if (us && us.size > 0) {
-            log.info(`Download proxy: serving ${fileName} from user cache (${baseName})`);
+            log.info(`Download proxy: serving ${fileName} from user folder (${baseName})`);
             res.writeHead(200, {
               'Content-Type': 'application/octet-stream',
               'Content-Disposition': contentDisposition(baseName),
               'Content-Length': String(us.size),
             });
-            createReadStream(userCachePath).pipe(res);
+            createReadStream(userPath).pipe(res);
             return;
           }
         }
