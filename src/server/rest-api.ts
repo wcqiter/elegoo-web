@@ -33,9 +33,9 @@ import { handlePrintQueueRequest } from './print-queue-routes.js';
 import { generateReportPDF } from './print-report-pdf.js';
 import { getBuildInfo } from './build-info.js';
 import { applyCors, corsHeaders } from './cors.js';
-import { captureLogDir, gcodeCacheDir, gcodeUserDir } from './data-paths.js';
 import { getLogger } from './logger.js';
 import { resolveTimelapseUpstream, type TimelapseUpstream } from './timelapse-proxy.js';
+import { captureLogDir, gcodeCacheDir, gcodeUserDir, getDataDir } from './data-paths.js';
 import {
   STATUS_NAMES,
   SUB_STATUS_NAMES,
@@ -152,10 +152,12 @@ async function handleFileDownload(
   isGcode: boolean,
   config: ServiceConfig,
 ): Promise<void> {
+  log.info(`handleFileDownload: dataDir="${getDataDir()}" userDir="${gcodeUserDir()}" file="${fileName}" base="${baseName}" isGcode=${isGcode}`);
   // ── Cache lookups (gcode only) ─────────────────────────────────
   if (isGcode) {
     try {
       await ensureCacheDir();
+      log.info(`ensureCacheDir OK`);
 
       // 1) Hash-named cache, written by the service itself on download/upload
       const cached = await getCachedGcode(fileName, config);
@@ -164,7 +166,7 @@ async function handleFileDownload(
         const s = await stat(cached);
         res.writeHead(200, {
           'Content-Type': 'application/octet-stream',
-          'Content-Disposition': `attachment; filename="${baseName}"`,
+           'Content-Disposition': contentDisposition(baseName),
           'Content-Length': String(s.size),
         });
         createReadStream(cached).pipe(res);
@@ -175,8 +177,10 @@ async function handleFileDownload(
       //    (e.g. C:\Users\…\3D Print → /app/data/gcode-cache). Match by basename
       //    only, and reject anything that could escape the cache dir.
       if (baseName && !baseName.includes('..') && !baseName.includes('/') && !baseName.includes('\\')) {
+        log.info(`guard passed`); 
         const userDir = gcodeUserDir();
         const userPath = join(userDir, baseName);
+        log.info(`user-cache probe: userPath="${userPath}" startsWith=${userPath.startsWith(userDir)}`);
         if (userPath.startsWith(userDir)) {
           const us = await stat(userPath).catch(() => null);
           if (us && us.size > 0) {
@@ -190,9 +194,11 @@ async function handleFileDownload(
             return;
           }
         }
+      } else {
+        log.warn(`guard FAILED for baseName="${baseName}"`);
       }
-    } catch {
-      /* cache miss, fall through */
+    } catch (err) {
+      log.warn(`Cache lookup threw for "${fileName}": ${(err as Error).stack ?? (err as Error).message}`);
     }
   }
 
@@ -296,6 +302,7 @@ export async function precacheGcodeAsync(
 ): Promise<{ ok: boolean; cached: boolean; size: number; error?: string }> {
   try {
     await ensureCacheDir();
+    log.info(`ensureCacheDir OK`);
     const existing = await getCachedGcode(fileName, config);
     if (existing) {
       const s = await stat(existing);
