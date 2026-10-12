@@ -223,7 +223,7 @@
         <!-- Camera -->
         <div class="card" id="camera-card">
           <div class="card-header">
-            <h3>📷 Camera</h3>
+            <h3>📷 Camera I</h3>
             <div class="camera-header-actions">
               <button id="camera-snapshot-btn" class="btn btn-sm btn-ghost" title="Save snapshot">📸 Snapshot</button>
               <button id="camera-overlay-btn" class="btn btn-sm btn-ghost" title="Toggle status overlay">📊 Overlay</button>
@@ -232,7 +232,26 @@
           </div>
           <div class="camera-wrap" id="camera-wrap" title="Click to enlarge">
             <img id="camera-feed" alt="Camera off" class="camera-img">
-            <div class="camera-overlay" id="camera-overlay">Camera not available</div>
+            <div class="camera-overlay" id="camera-overlay">Camera I not available</div>
+          </div>
+        </div>
+
+        <!-- Tapo Camera (via go2rtc) -->
+        <div class="card" id="tapo-camera-card">
+          <div class="card-header">
+            <h3>📹 Camera II</h3>
+            <div class="camera-header-actions">
+              <button id="tapo-camera-refresh-btn" class="btn btn-sm btn-ghost" title="Reconnect stream">⟳ Reconnect</button>
+            </div>
+          </div>
+          <div class="camera-wrap" id="tapo-camera-wrap">
+            <img
+              id="tapo-camera-feed"
+              alt="Tapo camera"
+              class="camera-img"
+              data-src="/api/stream/tapo?src=tapo_cam"
+            >
+            <div class="camera-overlay" id="tapo-camera-overlay">Camera II not available</div>
           </div>
         </div>
 

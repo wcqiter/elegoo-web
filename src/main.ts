@@ -243,6 +243,37 @@ function showDashboard(): void {
     // Escape and restores focus to the opener on close.
     let releaseCameraTrap: (() => void) | null = null;
 
+    // Tapo Camera
+    const tapoFeed = $('tapo-camera-feed') as HTMLImageElement;
+    const tapoOverlay = $('tapo-camera-overlay');
+    const tapoRefresh = $('tapo-camera-refresh-btn');
+
+    const startTapoStream = () => {
+      const src = tapoFeed.dataset.src;
+      if (!src) return;
+      // Add Timestamp
+      tapoFeed.src = `${src}&_=${Date.now()}`;
+      tapoOverlay?.classList.remove('hidden');
+    };
+    const stopTapoStream = () => {
+      tapoFeed.src = '';
+    };
+
+    tapoFeed.addEventListener('load', () => {
+      tapoOverlay?.classList.add('hidden');
+    });
+    tapoFeed.addEventListener('error', () => {
+      tapoOverlay?.classList.remove('hidden');
+      if (tapoOverlay) tapoOverlay.textContent = 'Tapo not available';
+    });
+    tapoRefresh?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      stopTapoStream();
+      setTimeout(startTapoStream, 200);
+    });
+
+    startTapoStream();
+
     const closeModal = () => {
       // Guard: the click handler on the overlay fires for the close button too, so this
       // can run twice. Releasing a trap twice would restore focus to the wrong element.

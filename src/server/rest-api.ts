@@ -973,6 +973,54 @@ export function createRestRouter(
       addOverlayClient(res, config);
       return;
     }
+    if (url.startsWith('/api/stream/tapo')) {
+      const params = new URL(url, 'http://localhost').searchParams;
+      const src = params.get('src') || '';
+
+      // 白名单，防止 src 被当成任意代理跳板
+      const ALLOWED_TAPO = ['tapo_cam'];
+      if (!ALLOWED_TAPO.includes(src)) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Unknown stream' }));
+        return;
+      }
+
+      const upstream = httpRequest(
+        {
+          hostname: 'go2rtc',
+          port: 1984,
+          path: `/api/stream.mjpeg?src=${src}`,
+          method: 'GET',
+          timeout: 10_000,
+        },
+        (up) => {
+          if (up.statusCode !== 200) {
+            up.resume();
+            res.writeHead(up.statusCode ?? 502, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: `go2rtc returned ${up.statusCode}` }));
+            return;
+          }
+          res.writeHead(200, {
+            'Content-Type':
+              up.headers['content-type'] || 'multipart/x-mixed-replace; boundary=--myboundary',
+            'Cache-Control': 'no-cache, no-store',
+            Connection: 'close',
+          });
+          up.pipe(res);
+          up.on('error', () => res.destroy());
+        },
+      );
+      upstream.on('error', (err) => {
+        log.warn(`Tapo proxy error: ${err.message}`);
+        if (!res.headersSent) {
+          res.writeHead(502, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Could not reach go2rtc' }));
+        }
+      });
+      res.on('close', () => upstream.destroy());
+      upstream.end();
+      return;
+    }
 
     // Telegram config — GET (read) and POST (update progress interval)
     if (url === '/api/config/telegram') {

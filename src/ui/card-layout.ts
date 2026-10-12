@@ -25,6 +25,7 @@ export const DEFAULT_SIDEBAR = [
 /** Default main area cards (detail/reference) */
 export const DEFAULT_MAIN = [
   'camera-card',
+  'tapo-camera-card', 
   'gcode-preview-card',
   'files-card',
   'print-queue-card',
@@ -43,7 +44,8 @@ export const ALL_CARD_IDS = [...DEFAULT_SIDEBAR, ...DEFAULT_MAIN];
 export const CARD_NAMES: Record<string, string> = {
   'temps-card': '🌡️ Temperatures',
   'canvas-card': '🎨 Canvas / AMS',
-  'camera-card': '📷 Camera',
+  'camera-card': '📷 Camera I',
+  'tapo-camera-card': '📹 Camera II',
   'ai-card': '🤖 AI Monitor',
   'event-log-card': '📜 Event Log',
   'gcode-preview-card': '📐 Layer Preview',
