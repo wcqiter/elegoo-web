@@ -1137,10 +1137,12 @@ body {
   cursor: pointer;
 }
 /* Expanded camera fills full grid width */
-#camera-card.camera-expanded {
+#camera-card.camera-expanded,
+#tapo-camera-card.camera-expanded {
   grid-column: 1 / -1;
 }
-#camera-card.camera-expanded .camera-img {
+#camera-card.camera-expanded .camera-img,
+#tapo-camera-card.camera-expanded .camera-img {
   max-height: 60vh;
   object-fit: contain;
 }

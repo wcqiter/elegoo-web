@@ -356,6 +356,78 @@ function showDashboard(): void {
         snapshotBtn.textContent = '📸 Snapshot';
       }
     });
+
+    // ── Tapo Camera II: snapshot + expand + click-to-enlarge ──────
+
+    const tapoCard = $('tapo-camera-card');
+    const tapoWrap = $('tapo-camera-wrap');
+    const tapoSnapshotBtn = $('tapo-camera-snapshot-btn') as HTMLButtonElement;
+    const tapoExpandBtn = $('tapo-camera-expand-btn') as HTMLButtonElement;
+
+    // Snapshot: grab the frame the <img> is currently showing.
+    // Camera I's /api/snapshot returns a single cached JPEG; the Tapo stream is a
+    // never-ending MJPEG, so there is no "single frame" URL to fetch. Draw the
+    // current frame to a canvas and export it. Same-origin, so no canvas taint.
+    tapoSnapshotBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (tapoSnapshotBtn.disabled) return;
+      if (!tapoFeed.complete || tapoFeed.naturalWidth === 0) {
+        toast('No frame yet — try again in a moment', 'error');
+        return;
+      }
+      tapoSnapshotBtn.disabled = true;
+      tapoSnapshotBtn.textContent = '⏳ ...';
+
+      const done = (ok: boolean) => {
+        tapoSnapshotBtn.disabled = false;
+        tapoSnapshotBtn.textContent = '📸 Snapshot';
+        if (!ok) toast('Snapshot failed', 'error');
+      };
+
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = tapoFeed.naturalWidth;
+        canvas.height = tapoFeed.naturalHeight;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return done(false);
+        ctx.drawImage(tapoFeed, 0, 0);
+        canvas.toBlob(
+          (blob) => {
+            if (!blob) return done(false);
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+            a.download = `tapo-${ts}.jpg`;
+            a.click();
+            setTimeout(() => URL.revokeObjectURL(url), 5000);
+            toast('Snapshot saved', 'success');
+            done(true);
+          },
+          'image/jpeg',
+          0.92,
+        );
+      } catch {
+        done(false);
+      }
+    });
+
+    // Expand: mirrors Camera I's card-level toggle (in-page, not the modal).
+    tapoExpandBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const expanded = tapoCard.classList.toggle('camera-expanded');
+      tapoExpandBtn.textContent = expanded ? '⤡ Collapse' : '⤢ Expand';
+    });
+
+    // Click-to-enlarge: reuse the shared #camera-modal, exactly as Camera I does.
+    // The modal <img> opens its own MJPEG connection to the proxy, which is what
+    // Camera I already does — a second go2rtc consumer for the duration of the modal.
+    tapoWrap.addEventListener('click', () => {
+      if (!tapoFeed.src) return;
+      cameraModalImg.src = tapoFeed.src;
+      cameraModal.classList.remove('hidden');
+      releaseCameraTrap = createFocusTrap(cameraModal, { onEscape: closeModal });
+    });
   }
 }
 
