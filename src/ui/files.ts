@@ -12,7 +12,6 @@ import {
   THUMBNAIL_PLACEHOLDER_SRC,
 } from './helpers';
 import { requestPrintDialog } from './print-dialog';
-import { addToPrintQueue } from './print-queue';
 import { type ListControls, createListControls } from './list-controls';
 
 let currentSource: 'local' | 'u-disk' = 'local';
@@ -26,6 +25,10 @@ const thumbnailCache = new Map<string, string>();
 let thumbnailQueue: string[] = [];
 /** Currently fetching thumbnail for this file */
 let thumbnailFetching: string | null = null;
+
+/** NEW: file paths whose inline details are currently expanded. Cleared on dir/source change. */
+const expandedFiles = new Set<string>();
+
 export function currentFileSource(): string {
   return currentSource;
 }
@@ -117,6 +120,8 @@ export function handleInlineThumbnail(base64: string | null): void {
       if (!fn) return;
       const fp = currentDir === '/' ? fn : currentDir.replace(/^\//, '') + '/' + fn;
       if (fp !== fullPath) return;
+
+      // Update the list icon thumbnail
       const iconEl = el.querySelector('.file-icon');
       // The guard skips a slot that already holds a *real* thumbnail. The placeholder
       // is not one, and must be replaced when the genuine preview arrives — treating it
@@ -132,16 +137,23 @@ export function handleInlineThumbnail(base64: string | null): void {
         iconEl.textContent = '';
         iconEl.appendChild(img);
       }
+
+      // NEW: if the file is expanded, refresh its inline detail thumbnail too
+      if (expandedFiles.has(fullPath)) {
+        const file = _fileMap.get(fn);
+        const detailsEl = el.querySelector('.file-inline-details');
+        if (file && detailsEl) {
+          detailsEl.innerHTML = buildInlineDetailsHtml(file, fullPath);
+        }
+      }
     });
   }
   // Fetch next in queue
   fetchNextThumbnail();
 }
 
-// ── File detail popover on thumbnail hover ──────────────────────
-let filePopover: HTMLElement | null = null;
-let popoverTimeout: ReturnType<typeof setTimeout> | null = null;
-/** Map filename → FileEntry for popover data lookup */
+// ── File detail (inline expansion) ──────────────────────────────
+/** Map filename → FileEntry for detail data lookup */
 let _fileMap = new Map<string, FileEntry>();
 let _popoverClient: CommandSender | null = null;
 
@@ -169,24 +181,22 @@ function parseFilamentFromName(filename: string): { types: string[]; count: numb
   return { types: [...new Set(found)], count: found.length };
 }
 
-function showFilePopover(file: FileEntry, anchor: HTMLElement): void {
-  closeFilePopover();
-  const fullPath =
-    currentDir === '/' ? file.filename : currentDir.replace(/^\//, '') + '/' + file.filename;
+/**
+ * NEW: Build the inline details HTML for a file row.
+ * Replaces the old floating `.file-popover` — same data, rendered in-flow.
+ */
+function buildInlineDetailsHtml(file: FileEntry, fullPath: string): string {
   const thumb = thumbnailCache.get(fullPath);
   const isCached = cachedFiles.has(fullPath);
   const filamentInfo = parseFilamentFromName(file.filename);
 
-  const el = document.createElement('div');
-  el.className = 'file-popover';
-
-  let html = '<div class="file-popover-inner">';
+  let html = '';
   if (thumb) {
-    html += `<img class="file-popover-thumb ${THUMBNAIL_CLASS}" src="data:image/png;base64,${thumb}" alt="Preview">`;
+    html += `<img class="file-detail-thumb ${THUMBNAIL_CLASS}" src="data:image/png;base64,${thumb}" alt="Preview">`;
   }
-  html += '<div class="file-popover-details">';
-  html += `<div class="file-popover-name">${escapeHtml(file.filename)}</div>`;
-  html += '<table class="file-popover-table">';
+  html += '<div class="file-detail-body">';
+  html += `<div class="file-detail-name">${escapeHtml(file.filename)}</div>`;
+  html += '<table class="file-detail-table">';
   html += `<tr><td>Size</td><td>${formatBytes(file.size)}</td></tr>`;
   if (file.print_time)
     html += `<tr><td>Print time</td><td>${formatTime(file.print_time)}</td></tr>`;
@@ -217,39 +227,77 @@ function showFilePopover(file: FileEntry, anchor: HTMLElement): void {
   html += '</table>';
 
   // Action buttons
-  html += '<div class="file-popover-actions">';
-  html += `<button class="btn btn-sm btn-ghost file-popover-preview" title="Full preview">🖼️ Preview</button>`;
-  html += `<button class="btn btn-sm btn-ghost file-popover-download" title="Download">📥 Download</button>`;
-  html += `<button class="btn btn-sm btn-ghost file-popover-delete" title="Delete">🗑️ Delete</button>`;
+  html += '<div class="file-detail-actions">';
+  html += `<button class="btn btn-sm btn-ghost file-detail-preview" title="Full preview">🖼️ Preview</button>`;
+  html += `<button class="btn btn-sm btn-ghost file-detail-download" title="Download">📥 Download</button>`;
+  html += `<button class="btn btn-sm btn-ghost file-detail-delete" title="Delete">🗑️ Delete</button>`;
   html += '</div>';
+  html += '</div>';
+  return html;
+}
 
-  html += '</div></div>';
-  el.innerHTML = html;
+let fileDelegationBound = false;
 
-  document.body.appendChild(el);
+/** Bind delegated event listeners on the file list container (once) */
+function ensureFileDelegation(container: HTMLElement): void {
+  if (fileDelegationBound) return;
+  fileDelegationBound = true;
 
-  // Bind popover action buttons
-  const source = currentSource === 'u-disk' ? 'u-disk' : 'local';
-  el.querySelector('.file-popover-preview')?.addEventListener('click', () => {
-    closeFilePopover();
-    pendingThumbnailFile = fullPath;
-    pendingThumbnailAnchor = anchor;
-    _lastState?.thumbnailRequestQueue.push('popup');
-    _popoverClient?.sendCommand(1045, { storage_media: currentSource, file_name: fullPath });
-  });
-  el.querySelector('.file-popover-download')?.addEventListener('click', () => {
-    closeFilePopover();
-    const a = document.createElement('a');
-    a.href = `/api/files/download?file=${encodeURIComponent(fullPath)}&source=${encodeURIComponent(source)}`;
-    a.download = file.filename;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-  });
-  el.querySelector('.file-popover-delete')?.addEventListener('click', () => {
-    closeFilePopover();
-    if (confirm(`Delete ${file.filename}?`)) {
-      _popoverClient?.sendCommand(1047, { storage_media: currentSource, file_path: [fullPath] });
+  // NEW: single delegated click handler — replaces the old hover popover plus
+  // its mouseenter / mouseleave listeners. Action buttons inside the inline
+  // details come first so they never bubble into the name-row toggle.
+  container.addEventListener('click', (e) => {
+    const target = e.target as HTMLElement;
+
+    // ── Inline detail: Preview (full thumbnail popup) ──────
+    const previewBtn = target.closest('.file-detail-preview') as HTMLElement | null;
+    if (previewBtn) {
+      e.stopPropagation();
+      const item = previewBtn.closest('.file-item') as HTMLElement;
+      const filename = item?.dataset.filename;
+      if (!filename) return;
+      const fullPath =
+        currentDir === '/' ? filename : currentDir.replace(/^\//, '') + '/' + filename;
+      pendingThumbnailFile = fullPath;
+      pendingThumbnailAnchor = item;
+      _lastState?.thumbnailRequestQueue.push('popup');
+      _popoverClient?.sendCommand(1045, { storage_media: currentSource, file_name: fullPath });
+      return;
+    }
+
+    // ── Inline detail: Download ─────────────────────────────
+    const downloadBtn = target.closest('.file-detail-download') as HTMLElement | null;
+    if (downloadBtn) {
+      e.stopPropagation();
+      const item = downloadBtn.closest('.file-item') as HTMLElement;
+      const filename = item?.dataset.filename;
+      if (!filename) return;
+      const fullPath =
+        currentDir === '/' ? filename : currentDir.replace(/^\//, '') + '/' + filename;
+      const source = currentSource === 'u-disk' ? 'u-disk' : 'local';
+      const a = document.createElement('a');
+      a.href = `/api/files/download?file=${encodeURIComponent(fullPath)}&source=${encodeURIComponent(source)}`;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      return;
+    }
+
+    // ── Inline detail: Delete ───────────────────────────────
+    const deleteBtn = target.closest('.file-detail-delete') as HTMLElement | null;
+    if (deleteBtn) {
+      e.stopPropagation();
+      const item = deleteBtn.closest('.file-item') as HTMLElement;
+      const filename = item?.dataset.filename;
+      if (!filename) return;
+      const fullPath =
+        currentDir === '/' ? filename : currentDir.replace(/^\//, '') + '/' + filename;
+      if (!confirm(`Delete ${filename}?`)) return;
+      _popoverClient?.sendCommand(1047, {
+        storage_media: currentSource,
+        file_path: [fullPath],
+      });
       setTimeout(() => {
         _popoverClient?.sendCommand(1044, {
           storage_media: currentSource,
@@ -259,110 +307,10 @@ function showFilePopover(file: FileEntry, anchor: HTMLElement): void {
         });
         _popoverClient?.sendCommand(1048, { storage_media: currentSource });
       }, 500);
+      return;
     }
-  });
 
-  // Position relative to anchor
-  const rect = anchor.getBoundingClientRect();
-  const popW = 320;
-  const popH = el.offsetHeight || 200;
-  let left = rect.right + 8;
-  let top = rect.top;
-  // Keep within viewport
-  if (left + popW > window.innerWidth) left = rect.left - popW - 8;
-  if (top + popH > window.innerHeight) top = Math.max(8, window.innerHeight - popH - 8);
-  el.style.left = `${left}px`;
-  el.style.top = `${top}px`;
-
-  // Apply dark thumbnail check if we have an image
-  const img = el.querySelector('.file-popover-thumb') as HTMLImageElement | null;
-  if (img) applyDarkThumbnailCheck(img, el);
-
-  filePopover = el;
-
-  // Close when mouse leaves the popover (with delay for moving back)
-  el.addEventListener('mouseleave', () => {
-    closePopoverTimeout = setTimeout(() => closeFilePopover(), 150);
-  });
-  el.addEventListener('mouseenter', () => {
-    if (closePopoverTimeout) {
-      clearTimeout(closePopoverTimeout);
-      closePopoverTimeout = null;
-    }
-  });
-}
-
-function closeFilePopover(): void {
-  if (popoverTimeout) {
-    clearTimeout(popoverTimeout);
-    popoverTimeout = null;
-  }
-  if (filePopover) {
-    filePopover.remove();
-    filePopover = null;
-  }
-}
-
-let closePopoverTimeout: ReturnType<typeof setTimeout> | null = null;
-let fileDelegationBound = false;
-
-/** Bind delegated event listeners on the file list container (once) */
-function ensureFileDelegation(container: HTMLElement): void {
-  if (fileDelegationBound) return;
-  fileDelegationBound = true;
-
-  // Delegated mouseenter/mouseleave for file popovers (use capture for mouseenter)
-  container.addEventListener(
-    'mouseenter',
-    (e) => {
-      const target = e.target as HTMLElement;
-      const item = target.closest('.file-item[data-type="file"]') as HTMLElement | null;
-      if (!item) return;
-      if (target.closest('.file-print-btn, .file-queue-btn')) return;
-      const fn = item.dataset.filename;
-      if (!fn) return;
-      const file = _fileMap.get(fn);
-      if (!file) return;
-
-      if (closePopoverTimeout) {
-        clearTimeout(closePopoverTimeout);
-        closePopoverTimeout = null;
-      }
-      if (popoverTimeout) {
-        clearTimeout(popoverTimeout);
-        popoverTimeout = null;
-      }
-      if (filePopover) {
-        showFilePopover(file, item);
-      } else {
-        popoverTimeout = setTimeout(() => showFilePopover(file, item), 300);
-      }
-    },
-    true,
-  );
-
-  container.addEventListener(
-    'mouseleave',
-    (e) => {
-      const target = e.target as HTMLElement;
-      const item = target.closest('.file-item[data-type="file"]') as HTMLElement | null;
-      if (!item) return;
-      if (popoverTimeout) {
-        clearTimeout(popoverTimeout);
-        popoverTimeout = null;
-      }
-      closePopoverTimeout = setTimeout(() => {
-        if (filePopover && !filePopover.matches(':hover')) closeFilePopover();
-      }, 150);
-    },
-    true,
-  );
-
-  // Delegated click for folders, breadcrumbs, and print buttons
-  container.addEventListener('click', (e) => {
-    const target = e.target as HTMLElement;
-
-    // Print button
+    // ── Print button ────────────────────────────────────────
     const printBtn = target.closest('.file-print-btn') as HTMLElement | null;
     if (printBtn) {
       e.stopPropagation();
@@ -376,21 +324,7 @@ function ensureFileDelegation(container: HTMLElement): void {
       return;
     }
 
-    // Add to print queue (ELEG-35) — queues the file, never starts it
-    const queueBtn = target.closest('.file-queue-btn') as HTMLElement | null;
-    if (queueBtn) {
-      e.stopPropagation();
-      const item = queueBtn.closest('.file-item') as HTMLElement;
-      const filename = item?.dataset.filename;
-      if (filename) {
-        const fullPath =
-          currentDir === '/' ? filename : currentDir.replace(/^\//, '') + '/' + filename;
-        void addToPrintQueue(fullPath, currentSource);
-      }
-      return;
-    }
-
-    // Folder click
+    // ── Folder click ────────────────────────────────────────
     const folder = target.closest('.file-item-folder') as HTMLElement | null;
     if (folder) {
       const dirname = folder.dataset.filename;
@@ -398,6 +332,7 @@ function ensureFileDelegation(container: HTMLElement): void {
       currentDir = currentDir === '/' ? '/' + dirname : currentDir + '/' + dirname;
       thumbnailQueue = [];
       thumbnailFetching = null;
+      expandedFiles.clear(); // NEW: nothing stays expanded across directories
       container.innerHTML = '<div class="loading">Loading...</div>';
       _popoverClient.sendCommand(1044, {
         storage_media: currentSource,
@@ -408,7 +343,7 @@ function ensureFileDelegation(container: HTMLElement): void {
       return;
     }
 
-    // Breadcrumb nav
+    // ── Breadcrumb nav ──────────────────────────────────────
     const navBtn = target.closest('.file-nav-btn') as HTMLElement | null;
     if (navBtn) {
       const dir = navBtn.dataset.dir;
@@ -416,6 +351,7 @@ function ensureFileDelegation(container: HTMLElement): void {
       currentDir = dir;
       thumbnailQueue = [];
       thumbnailFetching = null;
+      expandedFiles.clear(); // NEW
       container.innerHTML = '<div class="loading">Loading...</div>';
       _popoverClient.sendCommand(1044, {
         storage_media: currentSource,
@@ -423,12 +359,47 @@ function ensureFileDelegation(container: HTMLElement): void {
         offset: 0,
         limit: 200,
       });
+      return;
+    }
+
+    // ── Toggle inline details when clicking anywhere on the file row ──
+    // Folders are excluded by the `data-type="file"` selector and were already
+    // handled above, so this only fires for regular files.
+    const item = target.closest('.file-item[data-type="file"]') as HTMLElement | null;
+    if (!item) return;
+
+    // Guard 1: don't toggle while the user is selecting text in the row
+    // (e.g. dragging across the filename to copy it).
+    if (window.getSelection()?.toString()) return;
+
+    // Guard 2: clicks inside the expanded details panel should not collapse it.
+    // The action buttons above already returned; this only catches empty space
+    // and the metadata text.
+    if (target.closest('.file-inline-details')) return;
+
+    const filename = item.dataset.filename;
+    if (!filename) return;
+    const fullPath =
+      currentDir === '/' ? filename : currentDir.replace(/^\//, '') + '/' + filename;
+
+    if (expandedFiles.has(fullPath)) {
+      // Collapse
+      expandedFiles.delete(fullPath);
+      item.classList.remove('file-item-expanded');
+      item.querySelector('.file-inline-details')?.remove();
+    } else {
+      // Expand
+      const file = _fileMap.get(filename);
+      if (!file) return;
+      expandedFiles.add(fullPath);
+      item.classList.add('file-item-expanded');
+      item.insertAdjacentHTML(
+        'beforeend',
+        `<div class="file-inline-details">${buildInlineDetailsHtml(file, fullPath)}</div>`,
+      );
+      if (_popoverClient) fetchInlineThumbnails([file], _popoverClient);
     }
   });
-}
-
-function _bindFilePopovers(_container: HTMLElement): void {
-  // No-op: popovers now handled by delegation in ensureFileDelegation
 }
 
 function renderBreadcrumb(_client: CommandSender): string {
@@ -462,7 +433,7 @@ function renderCapacityBar(state: PrinterState): string {
   </div>`;
 }
 
-// Thumbnail popup state
+// Thumbnail popup state (kept — used by the Preview button)
 let thumbnailPopup: HTMLElement | null = null;
 
 function showThumbnailPopup(base64: string, anchor: HTMLElement): void {
@@ -495,7 +466,7 @@ function closeThumbnailPopup(): void {
 document.addEventListener('click', (e) => {
   if (
     thumbnailPopup &&
-    !(e.target as HTMLElement).closest('.file-thumbnail-btn') &&
+    !(e.target as HTMLElement).closest('.file-detail-preview') &&
     !(e.target as HTMLElement).closest('.file-thumbnail-popup')
   ) {
     closeThumbnailPopup();
@@ -610,10 +581,17 @@ export function renderFiles(state: PrinterState, client: CommandSender): void {
       iconHtml = '📄';
     }
 
+    // NEW: caret + inline details wrapper for expand/collapse
+    const isExpanded = !isFolder && expandedFiles.has(fullPath);
+    const caret = isFolder ? '' : `<span class="file-expand-caret">▸</span>`;
+    const inlineDetails = isExpanded
+      ? `<div class="file-inline-details">${buildInlineDetailsHtml(file, fullPath)}</div>`
+      : '';
+
     html += `
-      <div class="file-item ${isFolder ? 'file-item-folder' : ''}" data-filename="${escapeAttr(file.filename)}" data-type="${isFolder ? 'folder' : 'file'}">
+      <div class="file-item ${isFolder ? 'file-item-folder' : ''}${isExpanded ? ' file-item-expanded' : ''}" data-filename="${escapeAttr(file.filename)}" data-type="${isFolder ? 'folder' : 'file'}">
         <div class="file-name-row">
-          <span class="file-name" title="${escapeAttr(file.filename)}">${escapeHtml(file.filename)}</span>${cacheMarker}
+          ${caret}<span class="file-name" title="${escapeAttr(file.filename)}">${escapeHtml(file.filename)}</span>${cacheMarker}
         </div>
         <div class="file-item-body">
           <div class="file-icon">${iconHtml}</div>
@@ -621,21 +599,18 @@ export function renderFiles(state: PrinterState, client: CommandSender): void {
             <div class="file-size">${meta}</div>
           </div>
           <div class="file-actions">
-            ${isFolder ? '' : `<button class="btn btn-sm btn-ghost file-queue-btn" title="Add to print queue" aria-label="Add to print queue">＋</button>`}
             ${isFolder ? '' : `<button class="btn btn-sm btn-primary file-print-btn" title="Print">▶</button>`}
           </div>
         </div>
+        ${inlineDetails}
       </div>`;
   }
 
   container.innerHTML = html;
   ensureFileDelegation(container);
 
-  // Build file map for popover lookups
+  // Build file map for detail lookups
   _fileMap = new Map(sorted.filter((f) => f.type !== 'folder').map((f) => [f.filename, f]));
-
-  // Close any stale popover from previous render
-  closeFilePopover();
 
   // Fetch cached status and inline thumbnails asynchronously
   void fetchCachedStatus(sorted, client);
@@ -655,6 +630,7 @@ export function bindFileControls(client: CommandSender): void {
       currentDir = '/';
       thumbnailQueue = [];
       thumbnailFetching = null;
+      expandedFiles.clear(); // NEW: reset expansions when switching media
       document.querySelectorAll('.file-source-tab').forEach((t) => t.classList.remove('active'));
       tab.classList.add('active');
       $('file-list').innerHTML = '<div class="loading">Loading...</div>';

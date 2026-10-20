@@ -221,6 +221,7 @@ function showDashboard(): void {
     bindGcodePreviewControls();
     bindDebugPanel();
     bindKeyboardShortcuts();
+    bindPanelLocks();
     $('timelapse-close').addEventListener('click', () => {
       const player = $('timelapse-player') as HTMLVideoElement;
       player.pause();
@@ -439,6 +440,35 @@ function showDashboard(): void {
       releaseCameraTrap = createFocusTrap(cameraModal, { onEscape: closeModal });
     });
   }
+}
+
+/**
+ * Lock/unlock the three panel bodies (temperatures, control, fans & light).
+ *
+ * Uses a class on `.panel-body` rather than the `disabled` attribute because
+ * `guardedSend()` (in ui/dashboard.ts) re-enables controls after every command
+ * response — that would silently unlock the panel. `pointer-events: none`
+ * sidesteps the whole thing.
+ */
+function bindPanelLocks(): void {
+  document.querySelectorAll<HTMLButtonElement>('.panel-edit-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const cardId = btn.dataset.panel;
+      if (!cardId) return;
+      const body = document
+        .getElementById(cardId)
+        ?.querySelector<HTMLElement>('.panel-body');
+      if (!body) return;
+
+      const locked = body.classList.toggle('panel-locked');
+      const glyph = btn.querySelector<HTMLElement>('.btn-glyph');
+      const label = btn.querySelector<HTMLElement>('.btn-label');
+      if (glyph) glyph.textContent = locked ? '🔒' : '🔓';
+      if (label) label.textContent = locked ? 'Locked' : 'Editing';
+      btn.classList.toggle('is-editing', !locked);
+      btn.title = locked ? 'Unlock editing' : 'Lock editing';
+    });
+  });
 }
 
 /** Called when printer MQTT is confirmed connected */

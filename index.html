@@ -144,51 +144,58 @@
         <main class="dashboard-main" id="dashboard-main">
         <!-- Temperatures -->
         <div class="card" id="temps-card">
-          <h3>🌡️ Temperatures</h3>
-          <div class="temp-grid">
-            <div class="temp-item">
-              <div class="temp-row">
-                <div>
-                  <div class="temp-label">Nozzle</div>
-                  <div class="temp-value">
-                    <span id="temp-nozzle">--</span>°C
-                    <span class="temp-target">/ <span id="temp-nozzle-target">--</span>°C</span>
+          <div class="card-header">
+            <h3>🌡️ Temperatures</h3>
+            <button class="btn btn-sm btn-ghost btn-icon-mobile panel-edit-btn" data-panel="temps-card" title="Unlock editing">
+              <span class="btn-glyph">🔒</span><span class="btn-label">Locked</span>
+            </button>
+          </div>
+          <div class="panel-body panel-locked">
+            <div class="temp-grid">
+              <div class="temp-item">
+                <div class="temp-row">
+                  <div>
+                    <div class="temp-label">Nozzle</div>
+                    <div class="temp-value">
+                      <span id="temp-nozzle">--</span>°C
+                      <span class="temp-target">/ <span id="temp-nozzle-target">--</span>°C</span>
+                    </div>
+                  </div>
+                  <div class="temp-control">
+                    <input type="number" id="set-nozzle-temp" placeholder="210" min="0" max="300" step="5">
+                    <button class="btn btn-sm" id="btn-set-nozzle">Set</button>
+                    <button class="btn btn-sm btn-ghost" id="btn-off-nozzle">Off</button>
                   </div>
                 </div>
-                <div class="temp-control">
-                  <input type="number" id="set-nozzle-temp" placeholder="210" min="0" max="300" step="5">
-                  <button class="btn btn-sm" id="btn-set-nozzle">Set</button>
-                  <button class="btn btn-sm btn-ghost" id="btn-off-nozzle">Off</button>
+                <div class="temp-bar-wrap">
+                  <div class="temp-bar nozzle-bar" id="temp-nozzle-bar"></div>
                 </div>
               </div>
-              <div class="temp-bar-wrap">
-                <div class="temp-bar nozzle-bar" id="temp-nozzle-bar"></div>
-              </div>
-            </div>
-            <div class="temp-item">
-              <div class="temp-row">
-                <div>
-                  <div class="temp-label">Bed</div>
-                  <div class="temp-value">
-                    <span id="temp-bed">--</span>°C
-                    <span class="temp-target">/ <span id="temp-bed-target">--</span>°C</span>
+              <div class="temp-item">
+                <div class="temp-row">
+                  <div>
+                    <div class="temp-label">Bed</div>
+                    <div class="temp-value">
+                      <span id="temp-bed">--</span>°C
+                      <span class="temp-target">/ <span id="temp-bed-target">--</span>°C</span>
+                    </div>
+                  </div>
+                  <div class="temp-control">
+                    <input type="number" id="set-bed-temp" placeholder="60" min="0" max="120" step="5">
+                    <button class="btn btn-sm" id="btn-set-bed">Set</button>
+                    <button class="btn btn-sm btn-ghost" id="btn-off-bed">Off</button>
                   </div>
                 </div>
-                <div class="temp-control">
-                  <input type="number" id="set-bed-temp" placeholder="60" min="0" max="120" step="5">
-                  <button class="btn btn-sm" id="btn-set-bed">Set</button>
-                  <button class="btn btn-sm btn-ghost" id="btn-off-bed">Off</button>
+                <div class="temp-bar-wrap">
+                  <div class="temp-bar bed-bar" id="temp-bed-bar"></div>
                 </div>
               </div>
-              <div class="temp-bar-wrap">
-                <div class="temp-bar bed-bar" id="temp-bed-bar"></div>
-              </div>
-            </div>
-            <div class="temp-item">
-              <div class="temp-label">Chamber</div>
-              <div class="temp-value">
-                <span id="temp-chamber">--</span>°C
-                <span class="temp-range" id="temp-chamber-range"></span>
+              <div class="temp-item">
+                <div class="temp-label">Chamber</div>
+                <div class="temp-value">
+                  <span id="temp-chamber">--</span>°C
+                  <span class="temp-range" id="temp-chamber-range"></span>
+                </div>
               </div>
             </div>
           </div>
@@ -337,70 +344,72 @@
 
         <!-- Control -->
         <div class="card" id="toolhead-card">
-          <h3>Control</h3>
-          <div class="control-layout">
-            <div class="move-section">
-              <div class="move-xy-grid">
-                <div></div>
-                <button class="btn btn-sm move-btn" data-axis="y" data-dir="1">Y+</button>
-                <div></div>
-                <button class="btn btn-sm move-btn" data-axis="x" data-dir="-1">X-</button>
-                <button class="btn btn-sm move-btn home-btn" id="btn-home-all" title="Home All Axes">⌂</button>
-                <button class="btn btn-sm move-btn" data-axis="x" data-dir="1">X+</button>
-                <div></div>
-                <button class="btn btn-sm move-btn" data-axis="y" data-dir="-1">Y-</button>
-                <div></div>
+          <div class="card-header">
+            <h3>Control</h3>
+            <button class="btn btn-sm btn-ghost btn-icon-mobile panel-edit-btn" data-panel="toolhead-card" title="Unlock editing">
+              <span class="btn-glyph">🔒</span><span class="btn-label">Locked</span>
+            </button>
+          </div>
+          <div class="panel-body panel-locked">
+            <div class="control-layout">
+              <div class="move-section">
+                <div class="move-xy-grid">
+                  <div></div>
+                  <button class="btn btn-sm move-btn" data-axis="y" data-dir="1">Y+</button>
+                  <div></div>
+                  <button class="btn btn-sm move-btn" data-axis="x" data-dir="-1">X-</button>
+                  <button class="btn btn-sm move-btn home-btn" id="btn-home-all" title="Home All Axes">⌂</button>
+                  <button class="btn btn-sm move-btn" data-axis="x" data-dir="1">X+</button>
+                  <div></div>
+                  <button class="btn btn-sm move-btn" data-axis="y" data-dir="-1">Y-</button>
+                  <div></div>
+                </div>
+                <div class="move-z-col">
+                  <button class="btn btn-sm move-btn" data-axis="z" data-dir="1">Z↑</button>
+                  <button class="btn btn-sm move-btn home-btn" id="btn-home-all-z" title="Home All Axes">⌂</button>
+                  <button class="btn btn-sm move-btn" data-axis="z" data-dir="-1">Z↓</button>
+                </div>
               </div>
-              <div class="move-z-col">
-                <button class="btn btn-sm move-btn" data-axis="z" data-dir="1">Z↑</button>
-                <button class="btn btn-sm move-btn home-btn" id="btn-home-all-z" title="Home All Axes">⌂</button>
-                <button class="btn btn-sm move-btn" data-axis="z" data-dir="-1">Z↓</button>
+              <div class="position-display">
+                <span class="axis" data-home="x"><span class="home-dot" id="home-x" title="X not homed"></span>X:<span id="pos-x">--</span></span>
+                <span class="axis" data-home="y"><span class="home-dot" id="home-y" title="Y not homed"></span>Y:<span id="pos-y">--</span></span>
+                <span class="axis" data-home="z"><span class="home-dot" id="home-z" title="Z not homed"></span>Z:<span id="pos-z">--</span></span>
               </div>
-            </div>
-            <div class="position-display">
-              <span class="axis" data-home="x"><span class="home-dot" id="home-x" title="X not homed"></span>X:<span id="pos-x">--</span></span>
-              <span class="axis" data-home="y"><span class="home-dot" id="home-y" title="Y not homed"></span>Y:<span id="pos-y">--</span></span>
-              <span class="axis" data-home="z"><span class="home-dot" id="home-z" title="Z not homed"></span>Z:<span id="pos-z">--</span></span>
-            </div>
-            <div class="move-distance">
-              <button class="btn btn-sm dist-btn" data-dist="0.1">0.1mm</button>
-              <button class="btn btn-sm dist-btn" data-dist="1">1mm</button>
-              <button class="btn btn-sm dist-btn active" data-dist="10">10mm</button>
-              <button class="btn btn-sm dist-btn" data-dist="30">30mm</button>
-            </div>
-            <div class="speed-control">
-              <label>Print Speed</label>
-              <div class="speed-buttons">
-                <button class="btn btn-sm speed-btn" data-mode="50">Silent</button>
-                <button class="btn btn-sm speed-btn active" data-mode="100">Balanced</button>
-                <button class="btn btn-sm speed-btn" data-mode="130">Sport</button>
-                <button class="btn btn-sm speed-btn" data-mode="160">Ludicrous</button>
+              <div class="move-distance">
+                <button class="btn btn-sm dist-btn" data-dist="0.1">0.1mm</button>
+                <button class="btn btn-sm dist-btn" data-dist="1">1mm</button>
+                <button class="btn btn-sm dist-btn active" data-dist="10">10mm</button>
+                <button class="btn btn-sm dist-btn" data-dist="30">30mm</button>
               </div>
-            </div>
-            <div class="led-control">
-              <span class="fan-icon">☀️</span>
-              <span>Overhead light</span>
-              <label class="toggle"><input type="checkbox" id="led-toggle" checked><span class="toggle-slider"></span></label>
-            </div>
-            <div class="control-maintenance">
-              <div id="maintenance-status"></div>
-              <div class="maintenance-grid">
-                <button id="btn-self-check" class="btn btn-ghost maintenance-btn" title="Run full self-check (auto-level + vibration + PID)">
-                  <span class="maintenance-icon">🔍</span>
-                  <span>Self-Check</span>
-                </button>
-                <button id="btn-maintenance-level" class="btn btn-ghost maintenance-btn" title="Auto-level bed probing">
-                  <span class="maintenance-icon">📐</span>
-                  <span>Auto Level</span>
-                </button>
-                <button id="btn-maintenance-vibration" class="btn btn-ghost maintenance-btn" title="Input shaper / vibration optimization">
-                  <span class="maintenance-icon">〰️</span>
-                  <span>Vibration</span>
-                </button>
-                <button id="btn-maintenance-pid" class="btn btn-ghost maintenance-btn" title="PID auto-tune for nozzle and bed heaters">
-                  <span class="maintenance-icon">🌡️</span>
-                  <span>PID Tune</span>
-                </button>
+              <div class="speed-control">
+                <label>Print Speed</label>
+                <div class="speed-buttons">
+                  <button class="btn btn-sm speed-btn" data-mode="50">Silent</button>
+                  <button class="btn btn-sm speed-btn active" data-mode="100">Balanced</button>
+                  <button class="btn btn-sm speed-btn" data-mode="130">Sport</button>
+                  <button class="btn btn-sm speed-btn" data-mode="160">Ludicrous</button>
+                </div>
+              </div>
+              <div class="control-maintenance">
+                <div id="maintenance-status"></div>
+                <div class="maintenance-grid">
+                  <button id="btn-self-check" class="btn btn-ghost maintenance-btn" title="Run full self-check (auto-level + vibration + PID)">
+                    <span class="maintenance-icon">🔍</span>
+                    <span>Self-Check</span>
+                  </button>
+                  <button id="btn-maintenance-level" class="btn btn-ghost maintenance-btn" title="Auto-level bed probing">
+                    <span class="maintenance-icon">📐</span>
+                    <span>Auto Level</span>
+                  </button>
+                  <button id="btn-maintenance-vibration" class="btn btn-ghost maintenance-btn" title="Input shaper / vibration optimization">
+                    <span class="maintenance-icon">〰️</span>
+                    <span>Vibration</span>
+                  </button>
+                  <button id="btn-maintenance-pid" class="btn btn-ghost maintenance-btn" title="PID auto-tune for nozzle and bed heaters">
+                    <span class="maintenance-icon">🌡️</span>
+                    <span>PID Tune</span>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -408,48 +417,62 @@
 
         <!-- Fans -->
         <div class="card" id="fans-card">
-          <h3>Fans & Light</h3>
-          <div class="fan-grid">
-            <div class="fan-item">
-              <div class="fan-header">
-                <span class="fan-icon">❄️</span>
-                <span class="fan-label">Model</span>
-                <label class="toggle"><input type="checkbox" id="fan-model-toggle" checked><span class="toggle-slider"></span></label>
+          <div class="card-header">
+            <h3>Fans & Light</h3>
+            <button class="btn btn-sm btn-ghost btn-icon-mobile panel-edit-btn" data-panel="fans-card" title="Unlock editing">
+              <span class="btn-glyph">🔒</span><span class="btn-label">Locked</span>
+            </button>
+          </div>
+          <div class="panel-body panel-locked">
+            <div class="fan-grid">
+              <div class="fan-item">
+                <div class="fan-header">
+                  <span class="fan-icon">❄️</span>
+                  <span class="fan-label">Model</span>
+                  <label class="toggle"><input type="checkbox" id="fan-model-toggle" checked><span class="toggle-slider"></span></label>
+                </div>
+                <div class="fan-adjust">
+                  <button class="btn btn-sm fan-dec" data-fan="fan" data-step="-13">−</button>
+                  <div class="fan-bar-wrap"><div class="fan-bar" id="fan-model-bar"></div></div>
+                  <span class="fan-value" id="fan-model-value">--%</span>
+                  <span class="fan-rpm" id="fan-model-rpm"></span>
+                  <button class="btn btn-sm fan-inc" data-fan="fan" data-step="13">+</button>
+                </div>
               </div>
-              <div class="fan-adjust">
-                <button class="btn btn-sm fan-dec" data-fan="fan" data-step="-13">−</button>
-                <div class="fan-bar-wrap"><div class="fan-bar" id="fan-model-bar"></div></div>
-                <span class="fan-value" id="fan-model-value">--%</span>
-                <span class="fan-rpm" id="fan-model-rpm"></span>
-                <button class="btn btn-sm fan-inc" data-fan="fan" data-step="13">+</button>
+              <div class="fan-item">
+                <div class="fan-header">
+                  <span class="fan-icon">❄️</span>
+                  <span class="fan-label">Assistance</span>
+                  <label class="toggle"><input type="checkbox" id="fan-aux-toggle"><span class="toggle-slider"></span></label>
+                </div>
+                <div class="fan-adjust">
+                  <button class="btn btn-sm fan-dec" data-fan="aux_fan" data-step="-13">−</button>
+                  <div class="fan-bar-wrap"><div class="fan-bar" id="fan-aux-bar"></div></div>
+                  <span class="fan-value" id="fan-aux-value">--%</span>
+                  <span class="fan-rpm" id="fan-aux-rpm"></span>
+                  <button class="btn btn-sm fan-inc" data-fan="aux_fan" data-step="13">+</button>
+                </div>
               </div>
-            </div>
-            <div class="fan-item">
-              <div class="fan-header">
-                <span class="fan-icon">❄️</span>
-                <span class="fan-label">Assistance</span>
-                <label class="toggle"><input type="checkbox" id="fan-aux-toggle"><span class="toggle-slider"></span></label>
+              <div class="fan-item">
+                <div class="fan-header">
+                  <span class="fan-icon">❄️</span>
+                  <span class="fan-label">Case</span>
+                  <label class="toggle"><input type="checkbox" id="fan-case-toggle" checked><span class="toggle-slider"></span></label>
+                </div>
+                <div class="fan-adjust">
+                  <button class="btn btn-sm fan-dec" data-fan="box_fan" data-step="-13">−</button>
+                  <div class="fan-bar-wrap"><div class="fan-bar" id="fan-case-bar"></div></div>
+                  <span class="fan-value" id="fan-case-value">--%</span>
+                  <span class="fan-rpm" id="fan-case-rpm"></span>
+                  <button class="btn btn-sm fan-inc" data-fan="box_fan" data-step="13">+</button>
+                </div>
               </div>
-              <div class="fan-adjust">
-                <button class="btn btn-sm fan-dec" data-fan="aux_fan" data-step="-13">−</button>
-                <div class="fan-bar-wrap"><div class="fan-bar" id="fan-aux-bar"></div></div>
-                <span class="fan-value" id="fan-aux-value">--%</span>
-                <span class="fan-rpm" id="fan-aux-rpm"></span>
-                <button class="btn btn-sm fan-inc" data-fan="aux_fan" data-step="13">+</button>
-              </div>
-            </div>
-            <div class="fan-item">
-              <div class="fan-header">
-                <span class="fan-icon">❄️</span>
-                <span class="fan-label">Case</span>
-                <label class="toggle"><input type="checkbox" id="fan-case-toggle" checked><span class="toggle-slider"></span></label>
-              </div>
-              <div class="fan-adjust">
-                <button class="btn btn-sm fan-dec" data-fan="box_fan" data-step="-13">−</button>
-                <div class="fan-bar-wrap"><div class="fan-bar" id="fan-case-bar"></div></div>
-                <span class="fan-value" id="fan-case-value">--%</span>
-                <span class="fan-rpm" id="fan-case-rpm"></span>
-                <button class="btn btn-sm fan-inc" data-fan="box_fan" data-step="13">+</button>
+              <div class="fan-item">
+                <div class="fan-header">
+                  <span class="fan-icon">☀️</span>
+                  <span class="fan-label">Overhead Light</span>
+                  <label class="toggle"><input type="checkbox" id="led-toggle" checked><span class="toggle-slider"></span></label>
+                </div>
               </div>
             </div>
           </div>

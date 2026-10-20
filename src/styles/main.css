@@ -1717,7 +1717,7 @@ body {
   background: var(--bg-hover);
 }
 .file-item[data-type="file"] {
-  cursor: default;
+  cursor: pointer;
 }
 .file-item[data-type="file"]:not(:has(.file-print-btn:hover)):hover {
   background: var(--bg-hover);
@@ -1726,6 +1726,8 @@ body {
   display: flex;
   align-items: center;
   min-width: 0;
+  cursor: pointer;
+  user-select: none;
 }
 .file-name {
   font-size: 13px;
@@ -1823,68 +1825,6 @@ body {
   font-size: 11px;
   color: var(--text-muted);
   white-space: nowrap;
-}
-
-/* File detail popover */
-.file-popover {
-  position: fixed;
-  z-index: 1000;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
-  padding: 12px;
-  max-width: 320px;
-  min-width: 240px;
-  pointer-events: auto;
-  animation: fadeIn 0.15s ease;
-}
-.file-popover-inner {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-.file-popover-thumb {
-  width: 100%;
-  max-height: 180px;
-  object-fit: contain;
-  border-radius: var(--radius-sm);
-  background: var(--bg-secondary);
-}
-.file-popover-name {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-primary);
-  word-break: break-all;
-  line-height: 1.3;
-}
-.file-popover-table {
-  width: 100%;
-  font-size: 12px;
-  border-collapse: collapse;
-}
-.file-popover-table td {
-  padding: 2px 0;
-}
-.file-popover-table td:first-child {
-  color: var(--text-muted);
-  padding-right: 12px;
-  white-space: nowrap;
-}
-.file-popover-table td:last-child {
-  color: var(--text-primary);
-}
-.file-popover-actions {
-  display: flex;
-  gap: 6px;
-  margin-top: 6px;
-  padding-top: 8px;
-  border-top: 1px solid var(--border);
-  flex-wrap: wrap;
-}
-.file-popover-actions .btn {
-  font-size: 12px;
-  padding: 4px 10px;
 }
 
 /* Breadcrumb navigation */
@@ -4472,4 +4412,94 @@ body {
     margin-right: 0;
     font-size: 16px;
   }
+}
+
+/* Panel lock — Temperatures, Control, Fans & Light.
+   pointer-events: none disables every clickable descendant (buttons, toggles,
+   inputs) in one shot. guardedSend() only manipulates the `disabled` attribute,
+   which is independent, so it does not fight the lock. */
+.panel-body.panel-locked {
+  pointer-events: none;
+  opacity: 0.55;
+  user-select: none;
+}
+
+/* Clearly distinguishable unlock state. */
+.panel-edit-btn.is-editing {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+/* ── Inline file details (replaces hover popover) ─────────── */
+
+.file-expand-caret {
+  display: inline-block;
+  width: 14px;
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-right: 4px;
+  transition: transform 0.15s;
+  flex-shrink: 0;
+}
+.file-item-expanded .file-expand-caret {
+  transform: rotate(90deg);
+}
+
+.file-inline-details {
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.file-detail-thumb {
+  width: 120px;
+  max-height: 120px;
+  object-fit: contain;
+  border-radius: var(--radius-sm);
+  background: var(--bg-secondary);
+  flex-shrink: 0;
+}
+
+.file-detail-body {
+  flex: 1;
+  min-width: 200px;
+}
+
+.file-detail-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  word-break: break-all;
+  margin-bottom: 6px;
+}
+
+.file-detail-table {
+  width: 100%;
+  font-size: 12px;
+  border-collapse: collapse;
+}
+.file-detail-table td {
+  padding: 2px 0;
+}
+.file-detail-table td:first-child {
+  color: var(--text-muted);
+  padding-right: 12px;
+  white-space: nowrap;
+  width: 90px;
+}
+.file-detail-table td:last-child {
+  color: var(--text-primary);
+}
+
+.file-detail-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+  flex-wrap: wrap;
+  width: 100%;
 }
