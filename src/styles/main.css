@@ -1771,7 +1771,6 @@ body {
  */
 .thumb-img-fallback {
   object-fit: contain;
-  opacity: 0.55;
   padding: 2px;
 }
 .file-details {
@@ -4420,7 +4419,6 @@ body {
    which is independent, so it does not fight the lock. */
 .panel-body.panel-locked {
   pointer-events: none;
-  opacity: 0.55;
   user-select: none;
 }
 
