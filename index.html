@@ -44,7 +44,6 @@
     <div class="header-center">
       <nav class="main-tabs" id="main-tabs">
         <button class="main-tab active" data-tab="dashboard">🖨️ Dashboard</button>
-        <button class="main-tab" data-tab="tools">🧮 Tools</button>
         <button class="main-tab" data-tab="settings">⚙️ Settings</button>
         <button class="main-tab" data-tab="debug">🐛 Debug</button>
         <button class="main-tab" data-tab="help">❓ Help</button>
@@ -193,14 +192,6 @@
               </div>
             </div>
           </div>
-          <div class="temp-presets">
-            <span class="preset-label">Presets:</span>
-            <button class="btn btn-sm btn-ghost temp-preset-btn" data-nozzle="210" data-bed="60">PLA</button>
-            <button class="btn btn-sm btn-ghost temp-preset-btn" data-nozzle="240" data-bed="80">PETG</button>
-            <button class="btn btn-sm btn-ghost temp-preset-btn" data-nozzle="250" data-bed="100">ABS</button>
-            <button class="btn btn-sm btn-ghost temp-preset-btn" data-nozzle="230" data-bed="70">TPU</button>
-            <button class="btn btn-sm btn-ghost temp-preset-btn" data-nozzle="0" data-bed="0">Cool ❄️</button>
-          </div>
           <div class="chart-wrap">
             <div class="chart-time-selector">
               <button class="chart-time-btn" data-chart="chart-temps" data-window="60">1m</button>
@@ -225,14 +216,23 @@
           <div class="card-header">
             <h3>📷 Camera I</h3>
             <div class="camera-header-actions">
-              <button id="camera-snapshot-btn" class="btn btn-sm btn-ghost" title="Save snapshot">📸 Snapshot</button>
-              <button id="camera-overlay-btn" class="btn btn-sm btn-ghost" title="Toggle status overlay">📊 Overlay</button>
-              <button id="camera-expand-btn" class="btn btn-sm btn-ghost" title="Toggle large view">⤢ Expand</button>
+              <button id="camera-snapshot-btn" class="btn btn-sm btn-ghost btn-icon-mobile" title="Save snapshot">
+                <span class="btn-glyph">📸</span><span class="btn-label">Snapshot</span>
+              </button>
+              <button id="camera-overlay-btn" class="btn btn-sm btn-ghost btn-icon-mobile" title="Toggle status overlay">
+                <span class="btn-glyph">📊</span><span class="btn-label">Overlay</span>
+              </button>
+              <button id="camera-expand-btn" class="btn btn-sm btn-ghost btn-icon-mobile" title="Toggle large view">
+                <span class="btn-glyph">⤢</span><span class="btn-label">Expand</span>
+              </button>
+              <button id="camera-refresh-btn" class="btn btn-sm btn-ghost btn-icon-mobile" title="Reconnect stream">
+                <span class="btn-glyph">⟳</span><span class="btn-label">Reconnect</span>
+              </button>
             </div>
           </div>
           <div class="camera-wrap" id="camera-wrap" title="Click to enlarge">
             <img id="camera-feed" alt="Camera off" class="camera-img">
-            <div class="camera-overlay" id="camera-overlay">Camera I not available</div>
+            <div class="camera-overlay" id="camera-overlay">Camera I is loading ...</div>
           </div>
         </div>
 
@@ -241,9 +241,15 @@
           <div class="card-header">
             <h3>📹 Camera II</h3>
             <div class="camera-header-actions">
-              <button id="tapo-camera-snapshot-btn" class="btn btn-sm btn-ghost" title="Save snapshot">📸 Snapshot</button>
-              <button id="tapo-camera-expand-btn" class="btn btn-sm btn-ghost" title="Toggle large view">⤢ Expand</button>
-              <button id="tapo-camera-refresh-btn" class="btn btn-sm btn-ghost" title="Reconnect stream">⟳ Reconnect</button>
+              <button id="tapo-camera-snapshot-btn" class="btn btn-sm btn-ghost btn-icon-mobile" title="Save snapshot">
+                <span class="btn-glyph">📸</span><span class="btn-label">Snapshot</span>
+              </button>
+              <button id="tapo-camera-expand-btn" class="btn btn-sm btn-ghost btn-icon-mobile" title="Toggle large view">
+                <span class="btn-glyph">⤢</span><span class="btn-label">Expand</span>
+              </button>
+              <button id="tapo-camera-refresh-btn" class="btn btn-sm btn-ghost btn-icon-mobile" title="Reconnect stream">
+                <span class="btn-glyph">⟳</span><span class="btn-label">Reconnect</span>
+              </button>
             </div>
           </div>
           <div class="camera-wrap" id="tapo-camera-wrap" title="Click to enlarge">
@@ -253,7 +259,7 @@
               class="camera-img"
               data-src="/api/stream/tapo?src=tapo_cam"
             >
-            <div class="camera-overlay" id="tapo-camera-overlay">Camera II not available</div>
+            <div class="camera-overlay" id="tapo-camera-overlay">Camera II is loading ...</div>
           </div>
         </div>
 
@@ -301,11 +307,19 @@
           <div class="card-header">
             <h3>📐 Gcode Preview</h3>
             <div class="gcode-preview-actions">
-              <button id="btn-gcode-follow" class="btn btn-sm btn-ghost active" title="Follow print progress">📍 Follow</button>
-              <button id="btn-gcode-single-layer" class="btn btn-sm btn-ghost active" title="Show only current layer">🔍 Single Layer</button>
-              <button id="btn-load-gcode" class="btn btn-sm btn-ghost" title="Load gcode file">📂 Load</button>
+              <button id="btn-gcode-follow" class="btn btn-sm btn-ghost btn-icon-mobile active" title="Follow print progress">
+                <span class="btn-glyph">📍</span><span class="btn-label">Follow</span>
+              </button>
+              <button id="btn-gcode-single-layer" class="btn btn-sm btn-ghost btn-icon-mobile active" title="Show only current layer">
+                <span class="btn-glyph">🔍</span><span class="btn-label">Single Layer</span>
+              </button>
+              <button id="btn-load-gcode" class="btn btn-sm btn-ghost btn-icon-mobile" title="Load gcode file">
+                <span class="btn-glyph">📂</span><span class="btn-label">Load</span>
+              </button>
               <input type="file" id="gcode-file-input" accept=".gcode,.gco,.g" style="display:none">
-              <button id="btn-reset-layer-data" class="btn btn-sm btn-ghost" title="Reset layer duration data">🗑 Reset</button>
+              <button id="btn-reset-layer-data" class="btn btn-sm btn-ghost btn-icon-mobile" title="Reset layer duration data">
+                <span class="btn-glyph">🗑</span><span class="btn-label">Reset</span>
+              </button>
             </div>
           </div>
           <div class="gcode-preview-wrap">
@@ -487,7 +501,9 @@
         <div class="card" id="print-history-card">
           <div class="card-header">
             <h3>📜 Print History</h3>
-            <button id="btn-history-refresh" class="btn btn-sm btn-ghost" title="Refresh print history">⟳ Refresh</button>
+            <button id="btn-history-refresh" class="btn btn-sm btn-ghost btn-icon-mobile" title="Refresh print history">
+              <span class="btn-glyph">⟳</span><span class="btn-label">Refresh</span>
+            </button>
           </div>
           <!-- Sibling of the list (ELEG-50), for the same reason as Files: the entries
                are replaced wholesale whenever a 1036 response lands. -->
@@ -502,7 +518,9 @@
         <div class="card" id="print-reports-card">
           <div class="card-header">
             <h3>📊 Print Reports</h3>
-            <button id="btn-reports-refresh" class="btn btn-sm btn-ghost" title="Refresh reports">⟳ Refresh</button>
+            <button id="btn-reports-refresh" class="btn btn-sm btn-ghost btn-icon-mobile" title="Refresh reports">
+              <span class="btn-glyph">⟳</span><span class="btn-label">Refresh</span>
+            </button>
           </div>
           <!-- Sibling of the list (ELEG-51): the entries are replaced wholesale. -->
           <div id="print-reports-controls"></div>
@@ -516,8 +534,8 @@
           <div class="files-header">
             <h3>📁 Files</h3>
             <div class="files-header-actions">
-              <label class="btn btn-sm btn-primary file-upload-label" id="file-upload-label">
-                📤 Upload
+              <label class="btn btn-sm btn-primary file-upload-label btn-icon-mobile" id="file-upload-label" title="Upload file">
+                <span class="btn-glyph">📤</span><span class="btn-label">Upload</span>
                 <input type="file" id="file-upload-input" accept=".gcode,.3mf" hidden>
               </label>
               <div class="file-source-tabs">
@@ -555,7 +573,9 @@
         <div class="card" id="timelapse-card">
           <div class="files-header">
             <h3>🎬 Timelapse</h3>
-            <button class="btn btn-sm btn-ghost" id="timelapse-refresh">⟳ Refresh</button>
+            <button class="btn btn-sm btn-ghost btn-icon-mobile" id="timelapse-refresh" title="Refresh timelapse list">
+              <span class="btn-glyph">⟳</span><span class="btn-label">Refresh</span>
+            </button>
           </div>
           <div id="timelapse-player-wrap" class="timelapse-player-wrap hidden">
             <video id="timelapse-player" controls class="timelapse-video"></video>
@@ -576,7 +596,9 @@
               <button class="log-tab active" data-tab="structured">Structured</button>
               <button class="log-tab" data-tab="raw">Raw</button>
             </div>
-            <button class="btn btn-sm" id="btn-mqtt-capture" title="Capture all raw MQTT messages to file for debugging">📥 Capture</button>
+            <button class="btn btn-sm btn-icon-mobile" id="btn-mqtt-capture" title="Capture all raw MQTT messages to file for debugging">
+              <span class="btn-glyph">📥</span><span class="btn-label">Capture</span>
+            </button>
           </div>
 
           <!-- Structured tab -->
@@ -673,9 +695,15 @@
               <option value="60">Auto-stop: 60m</option>
             </select>
             <span id="debug-logging-badge" class="log-paused-badge hidden">LOGGING</span>
-            <button class="btn btn-sm btn-ghost" id="debug-export-state" title="Export current state as JSON">📤 State</button>
-            <button class="btn btn-sm btn-ghost" id="debug-export-log" title="Export change log as JSON">📥 Changes</button>
-            <button class="btn btn-sm btn-ghost" id="debug-clear-log">🗑 Clear</button>
+            <button class="btn btn-sm btn-ghost btn-icon-mobile" id="debug-export-state" title="Export current state as JSON">
+              <span class="btn-glyph">📤</span><span class="btn-label">State</span>
+            </button>
+            <button class="btn btn-sm btn-ghost btn-icon-mobile" id="debug-export-log" title="Export change log as JSON">
+              <span class="btn-glyph">📥</span><span class="btn-label">Changes</span>
+            </button>
+            <button class="btn btn-sm btn-ghost btn-icon-mobile" id="debug-clear-log" title="Clear change log">
+              <span class="btn-glyph">🗑</span><span class="btn-label">Clear</span>
+            </button>
           </div>
           <div class="debug-watched">
             <span class="debug-watched-label">Watched:</span>
@@ -685,8 +713,12 @@
           </div>
           <div class="debug-actions" style="display: flex; gap: 8px; flex-wrap: wrap; padding: 8px 0; border-bottom: 1px solid var(--border);">
             <span style="font-size: 12px; color: var(--text-muted); align-self: center;">Video Stream:</span>
-            <button class="btn btn-sm" id="debug-videostream-sdcp" title="Send CmdVideoStreamControl Enable=1 via SDCP WebSocket (port 3030) — matches official app">📡 SDCP Enable</button>
-            <button class="btn btn-sm" id="debug-videostream-mqtt" title="Send method 1054 (CTRL_LIVE_STREAM) Enable=1 via MQTT">📡 MQTT 1054</button>
+            <button class="btn btn-sm btn-icon-mobile" id="debug-videostream-sdcp" title="Send CmdVideoStreamControl Enable=1 via SDCP WebSocket (port 3030) — matches official app">
+              <span class="btn-glyph">📡</span><span class="btn-label">SDCP Enable</span>
+            </button>
+            <button class="btn btn-sm btn-icon-mobile" id="debug-videostream-mqtt" title="Send method 1054 (CTRL_LIVE_STREAM) Enable=1 via MQTT">
+              <span class="btn-glyph">📡</span><span class="btn-label">MQTT 1054</span>
+            </button>
             <span id="debug-videostream-result" style="font-size: 12px; color: var(--text-muted); align-self: center;"></span>
           </div>
           <div class="debug-split">

@@ -185,6 +185,16 @@ logStore.subscribe(scheduleRender);
 let controlsBound = false;
 let dashboardShown = false;
 
+/**
+ * Swap a header button's icon and label without destroying the span structure.
+ * Setting `.textContent` on the button would wipe `.btn-glyph` / `.btn-label`
+ * and break the icon-only mobile layout.
+ */
+function setBtn(btn: HTMLElement, glyph: string, label: string): void {
+  btn.querySelector<HTMLElement>('.btn-glyph')!.textContent = glyph;
+  btn.querySelector<HTMLElement>('.btn-label')!.textContent = label;
+}
+
 /** Show the dashboard UI and bind controls (idempotent) */
 function showDashboard(): void {
   if (dashboardShown) return;
@@ -285,7 +295,7 @@ function showDashboard(): void {
     };
 
     cameraWrap.addEventListener('click', () => {
-      if (!cameraFeed.src || cameraFeed.alt === 'Camera off') return;
+      if (!cameraFeed.src) return;
       cameraModalImg.src = cameraFeed.src;
       cameraModal.classList.remove('hidden');
       // Created after `.hidden` is removed: the trap reads the focusable children, and
@@ -305,7 +315,7 @@ function showDashboard(): void {
     expandBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       const expanded = cameraCard.classList.toggle('camera-expanded');
-      expandBtn.textContent = expanded ? '⤡ Collapse' : '⤢ Expand';
+      setBtn(expandBtn, expanded ? '⤡' : '⤢', expanded ? 'Collapse' : 'Expand');
     });
 
     // Camera overlay toggle
@@ -321,12 +331,12 @@ function showDashboard(): void {
       e.stopPropagation();
       if (snapshotBtn.disabled) return;
       snapshotBtn.disabled = true;
-      snapshotBtn.textContent = '⏳ ...';
+      setBtn(snapshotBtn, '⏳', '...');
       try {
         let res: Response | undefined;
         for (let attempt = 0; attempt < 3; attempt++) {
           if (attempt > 0) {
-            snapshotBtn.textContent = `⏳ retry ${attempt}...`;
+            setBtn(snapshotBtn, '⏳', `retry ${attempt}...`);
             await new Promise((r) => setTimeout(r, 1000 * 2 ** (attempt - 1)));
           }
           try {
@@ -353,7 +363,7 @@ function showDashboard(): void {
         toast('Snapshot failed', 'error');
       } finally {
         snapshotBtn.disabled = false;
-        snapshotBtn.textContent = '📸 Snapshot';
+        setBtn(snapshotBtn, '📸', 'Snapshot');
       }
     });
 
@@ -376,11 +386,11 @@ function showDashboard(): void {
         return;
       }
       tapoSnapshotBtn.disabled = true;
-      tapoSnapshotBtn.textContent = '⏳ ...';
+      setBtn(tapoSnapshotBtn, '⏳', '...');
 
       const done = (ok: boolean) => {
         tapoSnapshotBtn.disabled = false;
-        tapoSnapshotBtn.textContent = '📸 Snapshot';
+        setBtn(tapoSnapshotBtn, '📸', 'Snapshot');
         if (!ok) toast('Snapshot failed', 'error');
       };
 
@@ -416,7 +426,7 @@ function showDashboard(): void {
     tapoExpandBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       const expanded = tapoCard.classList.toggle('camera-expanded');
-      tapoExpandBtn.textContent = expanded ? '⤡ Collapse' : '⤢ Expand';
+      setBtn(tapoExpandBtn, expanded ? '⤡' : '⤢', expanded ? 'Collapse' : 'Expand');
     });
 
     // Click-to-enlarge: reuse the shared #camera-modal, exactly as Camera I does.
@@ -872,7 +882,6 @@ document.querySelectorAll('.main-tab').forEach((btn) => {
     const tab = (btn as HTMLElement).dataset.tab as
       | 'dashboard'
       | 'settings'
-      | 'tools'
       | 'help'
       | 'debug';
     switchToTab(tab);

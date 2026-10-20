@@ -4451,3 +4451,25 @@ body {
   font-size: 12px;
   color: var(--warning);
 }
+
+/* Icon+label header buttons: gap between glyph and label on desktop. */
+.btn-icon-mobile .btn-glyph {
+  margin-right: 4px;
+}
+
+/* On mobile: icon-only, square-ish, tooltip still shows on long-press. */
+@media (max-width: 800px) {
+  .btn.btn-icon-mobile {
+    padding: 6px 10px;
+    min-width: 40px;
+    justify-content: center;
+    gap: 0;
+  }
+  .btn-icon-mobile .btn-label {
+    display: none;
+  }
+  .btn-icon-mobile .btn-glyph {
+    margin-right: 0;
+    font-size: 16px;
+  }
+}
